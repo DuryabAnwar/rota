@@ -1,5 +1,6 @@
 # Rota
-**Live demo:**https://rota-1-xb6n.onrender.com/
+Live demo: https://rota-1-xb6n.onrender.com/
+
 (Free Render plan: the first load takes about a minute, and data resets when it sleeps.)
 An AI-run rotating savings circle (known as kameti, tanda, susu, chama or paluwagan around the world) built for the PayPal AI Hackathon.
 
