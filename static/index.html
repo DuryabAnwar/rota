@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rota: rotating savings circles</title>
+<meta name="description" content="Rota runs rotating savings circles on PayPal. Members pay each round, the ledger updates itself, and the pot goes to whoever's turn it is.">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cg fill='none' stroke-width='6' stroke-linecap='round'%3E%3Ccircle cx='20' cy='20' r='14' stroke='%23F4B63F' stroke-dasharray='18 69.96' transform='rotate(-75 20 20)'/%3E%3Ccircle cx='20' cy='20' r='14' stroke='%230C3B3F' stroke-dasharray='18 69.96' transform='rotate(45 20 20)'/%3E%3Ccircle cx='20' cy='20' r='14' stroke='%230C3B3F' stroke-dasharray='18 69.96' transform='rotate(165 20 20)'/%3E%3C/g%3E%3Ccircle cx='20' cy='20' r='5' fill='%23F4B63F'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=Instrument+Sans:wght@400;500;600&family=Noto+Nastaliq+Urdu&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme:light;
+  --bg:#F1F6F3;--paper:#fff;--ink:#0C3B3F;--ink-deep:#082A2D;--muted:#4D696B;--line:#D2DEDA;
+  --sun:#F4B63F;--sun-ink:#7A5200;
+  --leaf:#17694B;--leaf-bg:#DDF1E7;
+  --coral:#C0412D;--coral-bg:#FBE4DF;
+  --plum:#3F2A6B;--plum-bg:#ECE7F7;--plum-line:#CFC4EA;
+  --display:'Familjen Grotesk','Avenir Next','Segoe UI',system-ui,sans-serif;
+  /* Latin glyphs come from Instrument Sans; Urdu script falls through to Nastaliq */
+  --body:'Instrument Sans','Noto Nastaliq Urdu','Segoe UI',system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.6 var(--body);-webkit-font-smoothing:antialiased}
+header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;max-width:1040px;margin:0 auto;padding:18px 24px}
+.brand{display:inline-flex;align-items:center;gap:10px;color:var(--ink);text-decoration:none;font:700 28px/1 var(--display);letter-spacing:-.01em}
+.brand svg{display:block}
+.tag{color:var(--muted);font-size:15px}
+main{max-width:1040px;margin:0 auto;padding:12px 24px 72px}
+footer{max-width:1040px;margin:0 auto;padding:0 24px 40px;color:var(--muted);font-size:14px}
+h1,h2,h3{font-family:var(--display);line-height:1.1;margin:0 0 12px;letter-spacing:-.015em}
+h1{font-size:clamp(40px,6.4vw,68px);font-weight:700}
+h2{font-size:26px;font-weight:600;margin-top:48px}
+h3{font-size:18px;font-weight:600;margin-top:20px}
+.lead{max-width:48ch;color:var(--muted);font-size:18px;margin:0}
+label{display:block;font-weight:600;margin:18px 0 6px}
+textarea,input,select{width:100%;font:inherit;color:var(--ink);background:var(--paper);border:1.5px solid var(--line);border-radius:10px;padding:11px 13px}
+textarea:hover,input:hover,select:hover{border-color:#B5C7C2}
+textarea:focus-visible,input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.btn{font:600 16px var(--body);background:var(--ink);color:#fff;border:0;border-radius:999px;padding:11px 22px;cursor:pointer;margin-top:16px;transition:background .15s}
+.btn:hover{background:var(--ink-deep)}
+.btn.ghost{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--ink)}
+.btn.ghost:hover{background:#E3EDE8}
+.btn.pay{background:var(--sun);color:var(--ink)}
+.btn.pay:hover{background:#EBA621}
+.btn.plum{background:var(--plum)}
+.btn.plum:hover{background:#2F1E54}
+.btn.ghost.plum{background:transparent;color:var(--plum);box-shadow:inset 0 0 0 1.5px var(--plum)}
+.btn.ghost.plum:hover{background:var(--plum-bg)}
+.btn.sm{padding:7px 15px;font-size:15px;margin:0}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.row>input,.row>select{flex:1 1 220px;width:auto}
+.grid{display:grid;grid-template-columns:2fr 1fr 1fr 1.3fr;gap:12px}
+.note{color:var(--muted);font-size:15px;margin:10px 0 0}
+.msg{margin:16px 0;padding:11px 15px;border-left:4px solid var(--coral);background:var(--paper);border-radius:0 8px 8px 0}
+.msg.ok{border-color:var(--leaf)}
+
+/* hero */
+.hero{display:grid;grid-template-columns:1fr minmax(280px,440px);gap:24px 40px;align-items:center;padding:16px 0 8px}
+.hero-w svg{display:block;width:100%;height:auto}
+.hero .lead{margin-top:18px}
+
+/* panels */
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:20px;padding:8px 28px 30px;max-width:780px}
+.panel h2{margin-top:22px}
+.parsed{margin-top:24px;padding:4px 20px 22px;background:#F6FAF8;border:1px solid var(--line);border-radius:12px}
+.list a{display:flex;justify-content:space-between;gap:12px;padding:12px 4px;border-bottom:1px solid var(--line);color:var(--ink);text-decoration:none}
+.list a:hover{background:#E8F0EC}
+.list{max-width:780px;margin-top:24px}
+.list h3{margin:0 0 4px}
+
+/* wheel */
+.wheel svg{display:block;width:100%;height:auto}
+.trk{fill:none;stroke:var(--line);stroke-width:3}
+.prog{fill:none;stroke:var(--ink);stroke-width:5;stroke-linecap:round}
+.nd{stroke-width:2.5}
+.wn.done .nd{fill:var(--ink);stroke:var(--ink)}.wn.done .nt{fill:#fff}
+.wn.now .nd{fill:var(--sun);stroke:var(--ink)}.wn.now .nt{fill:var(--ink)}
+.wn.next .nd{fill:var(--paper);stroke:var(--line)}.wn.next .nt{fill:var(--muted)}
+.halo{fill:none;stroke:var(--sun);stroke-opacity:.5;stroke-width:3}
+.nt{text-anchor:middle;dominant-baseline:central;font-family:var(--display);font-weight:700}
+.wp{font-family:var(--display);font-weight:700;fill:var(--ink);text-anchor:middle;dominant-baseline:central}
+.wc{fill:var(--muted);text-anchor:middle;font-size:13px;font-family:var(--body)}
+.hn .nd{fill:var(--ink);stroke:var(--ink)}
+.hn.first .nd{fill:var(--sun);stroke:var(--ink)}
+.hn .nd{animation:pass .9s ease-in-out both;animation-delay:calc(var(--i)*.5s + .5s)}
+.hn.first .nd{animation:none}
+@keyframes pass{0%{fill:var(--ink)}40%{fill:var(--sun)}100%{fill:var(--ink)}}
+.hl-name{font:600 18px var(--display);fill:var(--ink)}
+.hl-reg{font:400 14px var(--body);fill:var(--muted)}
+@media (prefers-reduced-motion:reduce){.hn .nd{animation:none}}
+
+/* group header */
+.gh{display:grid;grid-template-columns:1fr 280px;gap:12px 48px;align-items:center;padding-top:12px}
+.gh h1{font-size:clamp(34px,5vw,52px)}
+.facts{display:flex;gap:12px 36px;flex-wrap:wrap;margin:18px 0 6px}
+.facts b{display:block;font:700 28px/1.15 var(--display)}
+.facts span{display:block;color:var(--muted);font-size:14px}
+.facts .hl b{display:inline-block;box-shadow:inset 0 -.32em 0 var(--sun)}
+.strip{display:flex;gap:8px 18px;flex-wrap:wrap;margin:18px 0 4px;padding:0;list-style:none}
+.turn{display:inline-flex;align-items:center;gap:8px;font-size:15px}
+.dot{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font:700 14px var(--display);border:2px solid var(--line);color:var(--muted);background:var(--paper)}
+.turn.done .dot{background:var(--ink);border-color:var(--ink);color:#fff}
+.turn.now .dot{background:var(--sun);border-color:var(--ink);color:var(--ink)}
+.turn.now{font-weight:600}
+
+/* tables */
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;background:var(--paper);border-radius:12px}
+th{text-align:left;font-weight:600;color:var(--muted);font-size:14px;padding:10px 14px;border-bottom:2px solid var(--ink)}
+td{padding:13px 14px;border-bottom:1px solid var(--line);vertical-align:middle}
+td:first-child{font-weight:600}
+.badge{display:inline-block;padding:2px 11px;border-radius:99px;font-size:13px;font-weight:600}
+.b-paid{background:var(--leaf-bg);color:var(--leaf)}.b-pending{background:#E4ECE8;color:var(--muted)}.b-late{background:var(--coral-bg);color:var(--coral)}
+.risk-high{color:var(--coral);font-weight:600}.risk-medium{color:var(--sun-ink);font-weight:600}.risk-low{color:var(--muted)}
+.mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:14px;overflow-wrap:anywhere}
+.actions{margin-top:20px}
+
+/* secretary */
+.sec{margin-top:48px;background:var(--plum-bg);border:1px solid var(--plum-line);border-radius:20px;padding:6px 28px 28px;color:var(--plum)}
+.sec h2{margin-top:22px}
+.sec .note{color:#5B4A85}
+.sec input,.sec select{border-color:var(--plum-line)}
+.sec label{margin:0}
+.out{margin-top:16px;padding:16px 18px;background:var(--paper);border:1px solid var(--plum-line);border-radius:12px;white-space:pre-wrap;line-height:1.8;color:var(--ink)}
+.out:empty{display:none}
+.rem{padding:10px 0;border-bottom:1px solid var(--line)}.rem:last-child{border:0}
+
+@media(max-width:800px){
+  .hero{grid-template-columns:1fr}
+  .hero-w{max-width:380px;margin:0 auto;width:100%}
+  .gh{grid-template-columns:1fr}
+  .wheel{max-width:260px;margin:0 auto;width:100%}
+}
+@media(max-width:640px){
+  .grid{grid-template-columns:1fr 1fr}
+  main,header,footer{padding-left:16px;padding-right:16px}
+  .panel,.sec{padding-left:18px;padding-right:18px}
+  .tag{display:none}
+  /* ledger rows become compact cards on phones so the pay button stays in view */
+  .ledger-t,.ledger-t tbody{display:block;background:transparent}
+  .ledger-t thead{display:none}
+  .ledger-t tr{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:14px 16px;margin-bottom:10px;background:var(--paper);border:1px solid var(--line);border-radius:14px}
+  .ledger-t td{display:block;padding:0;border:0}
+  .ledger-t td:nth-child(1){grid-area:1/1}
+  .ledger-t td:nth-child(3){grid-area:1/2;justify-self:end}
+  .ledger-t td:nth-child(2){grid-area:2/1;color:var(--muted);font-size:15px}
+  .ledger-t td:nth-child(2)::before{content:"Due "}
+  .ledger-t td:nth-child(4){grid-area:2/2;justify-self:end;font-size:15px}
+  .ledger-t td:nth-child(5){grid-area:3/1/4/3;margin-top:8px}
+  .ledger-t td:nth-child(5):empty{display:none}
+  .ledger-t td:nth-child(5) .btn{width:100%}
+}
+</style>
+</head>
+<body>
+<header>
+  <a class="brand" href="/" aria-label="Rota home">
+    <svg width="36" height="36" viewBox="0 0 40 40" aria-hidden="true"><g fill="none" stroke-width="6" stroke-linecap="round"><circle cx="20" cy="20" r="14" stroke="#F4B63F" stroke-dasharray="18 69.96" transform="rotate(-75 20 20)"/><circle cx="20" cy="20" r="14" stroke="#0C3B3F" stroke-dasharray="18 69.96" transform="rotate(45 20 20)"/><circle cx="20" cy="20" r="14" stroke="#0C3B3F" stroke-dasharray="18 69.96" transform="rotate(165 20 20)"/></g><circle cx="20" cy="20" r="5" fill="#F4B63F"/></svg>
+    Rota
+  </a>
+  <span class="tag">Rotating savings with a ledger everyone can check.</span>
+</header>
+<main id="app"></main>
+<footer>Sandbox demo. No real money moves.</footer>
+<div id="live" role="status" aria-live="polite" style="position:absolute;left:-9999px"></div>
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money = (v, c) => `${Number(v).toFixed(2)} ${c}`;
+const day = s => new Date(s).toLocaleDateString(undefined, {day:'numeric', month:'short', year:'numeric'});
+
+async function api(url, method = 'GET', body) {
+  const r = await fetch(url, {method, headers: {'Content-Type': 'application/json'}, body: body ? JSON.stringify(body) : undefined});
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(typeof j.detail === 'string' ? j.detail : `Something went wrong on the server (code ${r.status}). Try again.`);
+  return j;
+}
+function say(el, text, ok) { el.innerHTML = text ? `<div class="msg ${ok ? 'ok' : ''}">${esc(text)}</div>` : ''; }
+async function guard(el, fn) { try { say(el, ''); return await fn(); } catch (e) { say(el, e.message); } }
+
+/* ---------------- wheels ---------------- */
+// Home hero: the same idea under different names, around one pot.
+function heroWheel() {
+  const H = [['Kameti', 'Pakistan'], ['Tanda', 'Mexico'], ['Susu', 'West Africa'], ['Chama', 'Kenya'], ['Paluwagan', 'Philippines']];
+  const cx = 220, cy = 205, R = 112, nr = 18;
+  const parts = H.map(([name, region], i) => {
+    const a = (-90 + i * 360 / H.length) * Math.PI / 180, c = Math.cos(a), sn = Math.sin(a);
+    const x = cx + R * c, y = cy + R * sn;
+    let label;
+    if (sn < -0.9) label = `<text class="hl-name" x="${x}" y="${y - nr - 28}" text-anchor="middle">${name}</text><text class="hl-reg" x="${x}" y="${y - nr - 10}" text-anchor="middle">${region}</text>`;
+    else {
+      const dx = (c > 0 ? 1 : -1) * (nr + 14), anchor = c > 0 ? 'start' : 'end';
+      label = `<text class="hl-name" x="${x + dx}" y="${y}" text-anchor="${anchor}">${name}</text><text class="hl-reg" x="${x + dx}" y="${y + 18}" text-anchor="${anchor}">${region}</text>`;
+    }
+    return `<g class="hn ${i === 0 ? 'first' : ''}" style="--i:${i}"><circle class="nd" cx="${x}" cy="${y}" r="${nr}"/>${label}</g>`;
+  }).join('');
+  return `<svg viewBox="-34 0 484 410" role="img" aria-label="One idea with many names: kameti in Pakistan, tanda in Mexico, susu in West Africa, chama in Kenya, paluwagan in the Philippines">
+    <circle class="trk" cx="${cx}" cy="${cy}" r="${R}"/>${parts}
+    <circle cx="${cx}" cy="${cy}" r="36" fill="#F4B63F"/>
+    <text x="${cx}" y="${cy}" class="nt" font-size="16" fill="#0C3B3F" style="fill:#0C3B3F">the pot</text></svg>`;
+}
+// Group page: members around the ring, pot in the middle, current recipient lit.
+function wheel(s) {
+  const g = s.group, n = s.order.length, done = g.status === 'complete';
+  const cx = 130, cy = 130, R = 96, C = 2 * Math.PI * R;
+  const nr = n <= 8 ? 20 : n <= 14 ? 14 : 10;
+  const finished = done ? n : g.current_round - 1;
+  const nodes = s.order.map((name, i) => {
+    const a = (-90 + i * 360 / n) * Math.PI / 180, x = cx + R * Math.cos(a), y = cy + R * Math.sin(a);
+    const st = i < finished ? 'done' : (i === finished && !done) ? 'now' : 'next';
+    const r = st === 'now' ? nr + 4 : nr;
+    return `<g class="wn ${st}"><title>${esc(name)}</title>${st === 'now' ? `<circle class="halo" cx="${x}" cy="${y}" r="${r + 7}"/>` : ''}<circle class="nd" cx="${x}" cy="${y}" r="${r}"/><text class="nt" x="${x}" y="${y}" font-size="${Math.round(r * .8)}">${st === 'done' ? '✓' : i + 1}</text></g>`;
+  }).join('');
+  const amt = Number(s.pot).toFixed(2), fs = amt.length > 8 ? 22 : amt.length > 6 ? 27 : 32;
+  const centre = done
+    ? `<text class="wp" x="${cx}" y="${cy - 6}" font-size="28">Complete</text><text class="wc" x="${cx}" y="${cy + 22}">every round paid out</text>`
+    : `<text class="wp" x="${cx}" y="${cy - 18}" font-size="${fs}">${amt}</text><text class="wc" x="${cx}" y="${cy + 14}">${esc(g.currency)} pot</text><text class="wc" x="${cx}" y="${cy + 34}">round ${g.current_round} of ${g.total_rounds}</text>`;
+  return `<svg viewBox="0 0 260 260" role="img" aria-label="Payout order: ${esc(s.order.join(', '))}">
+    <circle class="trk" cx="${cx}" cy="${cy}" r="${R}"/>
+    <circle class="prog" cx="${cx}" cy="${cy}" r="${R}" stroke-dasharray="${(C * finished / n).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 ${cx} ${cy})"/>
+    ${nodes}${centre}</svg>`;
+}
+
+/* ---------------- home ---------------- */
+async function home() {
+  $('#app').innerHTML = `
+    <section class="hero">
+      <div>
+        <h1>Save together.<br>Take turns.</h1>
+        <p class="lead">Describe your circle in your own words, in English, Urdu or Roman Urdu. Everyone pays through PayPal, the ledger updates itself, and the pot goes to whoever's turn it is.</p>
+      </div>
+      <div class="hero-w">${heroWheel()}</div>
+    </section>
+    <div class="list" id="groups"></div>
+    <section class="panel">
+      <h2>Start a new circle</h2>
+      <label for="desc">Describe the rules</label>
+      <textarea id="desc" rows="3" placeholder="5 friends, 50 dollars each month for 5 months, order decided by draw"></textarea>
+      <p class="note">Roman Urdu works too: 3 dost, har mahine 30 dollar, 3 mahine, tarteeb draw se</p>
+      <label for="mem">Members, one per line: name, PayPal email</label>
+      <textarea id="mem" rows="5" placeholder="Ayesha, ayesha@personal.example.com"></textarea>
+      <p class="note">For the sandbox demo, use the email addresses of your PayPal sandbox personal accounts.</p>
+      <button class="btn" id="read">Read the rules</button>
+      <div id="e1"></div><div id="parsed"></div>
+    </section>`;
+  api('/api/groups').then(gs => {
+    $('#groups').innerHTML = gs.length ? '<h3>Your circles</h3>' + gs.map(g => `<a href="/?g=${g.id}"><b>${esc(g.name)}</b><span>${g.status === 'complete' ? 'Complete' : `Round ${g.current_round} of ${g.total_rounds}`}</span></a>`).join('') : '';
+  }).catch(() => {});
+  $('#read').onclick = () => guard($('#e1'), async () => {
+    const members = $('#mem').value.split('\n').map(l => l.trim()).filter(Boolean).map(l => {
+      const [name, ...rest] = l.split(','); return {name: name.trim(), email: rest.join(',').trim()};
+    });
+    if (members.length < 2 || members.some(m => !m.name || !m.email.includes('@'))) throw new Error('List at least two members, one per line, as: name, email.');
+    $('#read').disabled = true;
+    try {
+      const p = await api('/api/parse', 'POST', {text: $('#desc').value});
+      const warn = p.members && p.members !== members.length ? `<p class="msg">The description says ${p.members} members but you listed ${members.length}. The list is used.</p>` : '';
+      $('#parsed').innerHTML = `<div class="parsed"><h3>Check these rules</h3>${warn}
+        <p dir="auto">${esc(p.summary)}</p>
+        <div class="grid">
+          <div><label for="pn">Name</label><input id="pn" value="${esc(p.name)}"></div>
+          <div><label for="pa">Each pays</label><input id="pa" type="number" min="1" step="0.01" value="${p.amount}"></div>
+          <div><label for="pc">Currency</label><input id="pc" maxlength="3" value="${esc(p.currency)}"></div>
+          <div><label for="po">Order</label><select id="po"><option value="draw" ${p.order === 'draw' ? 'selected' : ''}>Random draw</option><option value="manual" ${p.order === 'manual' ? 'selected' : ''}>As listed</option></select></div>
+        </div>
+        <p class="note">Each round the pot is ${members.length} × the amount. ${members.length} rounds in total.</p>
+        <button class="btn" id="make">Create circle</button><div id="e2"></div></div>`;
+      $('#make').onclick = () => guard($('#e2'), async () => {
+        const g = await api('/api/groups', 'POST', {config: {name: $('#pn').value, amount: parseFloat($('#pa').value), currency: $('#pc').value, order: $('#po').value, summary: p.summary}, members});
+        location.href = `/?g=${g.id}`;
+      });
+    } finally { $('#read').disabled = false; }
+  });
+}
+
+/* ---------------- group ---------------- */
+let GID, STATE, timer;
+function renderTop(s) {
+  const g = s.group, done = g.status === 'complete';
+  $('#top').innerHTML = `<div class="gh">
+    <div>
+      <h1>${esc(g.name)}</h1>
+      <div class="facts">
+        <div><b>${money(g.amount, g.currency)}</b><span>Each pays per round</span></div>
+        <div><b>${money(s.pot, g.currency)}</b><span>Pot per round</span></div>
+        ${done ? '' : `<div class="hl"><b>${esc(s.recipient)}</b><span>Receives this round</span></div>`}
+      </div>
+      <ul class="strip" aria-label="Payout order">${s.order.map((n, i) => `<li class="turn ${i + 1 < g.current_round || done ? 'done' : i + 1 === g.current_round ? 'now' : ''}"><span class="dot">${i + 1 < g.current_round || done ? '✓' : i + 1}</span>${esc(n)}</li>`).join('')}</ul>
+      <p class="note">${g.seed ? `Order drawn at random. Seed <span class="mono">${esc(g.seed)}</span>: shuffling the member IDs with this seed reproduces the order.` : 'Order set by the organizer.'}</p>
+      ${g.rules ? `<p class="note" dir="auto">${esc(g.rules)}</p>` : ''}
+    </div>
+    <div class="wheel">${wheel(s)}</div></div>`;
+}
+function renderLedger(s) {
+  const g = s.group, done = g.status === 'complete';
+  const rows = s.ledger.map(l => `<tr>
+    <td>${esc(l.member)}</td><td>${day(l.due)}</td>
+    <td><span class="badge ${l.status === 'paid' ? 'b-paid' : l.overdue ? 'b-late' : 'b-pending'}">${l.status === 'paid' ? 'Paid' : l.overdue ? 'Overdue' : 'Not paid'}</span></td>
+    <td class="risk-${l.risk.level}" title="${esc(l.risk.reasons.join('; '))}">${l.risk.level === 'low' ? 'Low' : l.risk.level === 'medium' ? 'Watch' : 'High risk'}</td>
+    <td>${l.status === 'paid' ? '' : `<button class="btn sm pay" data-pay="${l.id}">Pay with PayPal</button>`}</td></tr>`).join('');
+  $('#ledger').innerHTML = `
+    <h2>${done ? 'Final round ledger' : `Round ${g.current_round} ledger`}</h2>
+    <div class="tw"><table class="ledger-t"><thead><tr><th>Member</th><th>Due</th><th>Status</th><th>Default risk</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
+    <p class="note">Default risk comes from simple rules: past late payments and current overdue days. Hover a rating to see why.</p>
+    ${done ? '<p>This circle is complete. Every member has received the pot.</p>' : `
+    <div class="row actions"><button class="btn sm" id="payout" ${s.all_paid ? '' : 'disabled'}>Pay out ${money(s.pot, g.currency)} to ${esc(s.recipient)}</button>
+    <button class="btn ghost sm" id="late">Backdate unpaid dues (demo)</button></div>
+    <p class="note">In the demo, each member pays from their own PayPal sandbox buyer account. Use a private window per member.</p>`}
+    <div id="e3"></div>`;
+  document.querySelectorAll('[data-pay]').forEach(b => b.onclick = () => guard($('#e3'), async () => {
+    const w = window.open('about:blank', '_blank');
+    try { const r = await api(`/api/payments/${b.dataset.pay}/order`, 'POST'); w.location.href = r.approve_url; }
+    catch (e) { w && w.close(); throw e; }
+  }));
+  const po = $('#payout');
+  if (po) po.onclick = () => guard($('#e3'), async () => {
+    if (!confirm(`Send ${money(s.pot, g.currency)} to ${s.recipient}?`)) return;
+    STATE = await api(`/api/groups/${GID}/payout`, 'POST'); renderAll(STATE);
+  });
+  const late = $('#late');
+  if (late) late.onclick = () => guard($('#e3'), async () => { STATE = await api(`/api/groups/${GID}/demo/make-late?days=3`, 'POST'); renderAll(STATE); });
+}
+function renderHist(s) {
+  $('#hist').innerHTML = s.payouts.length ? `<h2>Payouts so far</h2><div class="tw"><table><thead><tr><th>Round</th><th>Recipient</th><th>Amount</th><th>PayPal batch</th></tr></thead><tbody>${s.payouts.map(p => `<tr><td>${p.round}</td><td>${esc(p.member)}</td><td>${money(p.amount, s.group.currency)}</td><td class="mono">${esc(p.batch_id)} ${p.simulated ? '(simulated)' : `(${esc(p.status)})`}</td></tr>`).join('')}</tbody></table></div>` : '';
+}
+function renderAll(s) { renderTop(s); renderLedger(s); renderHist(s); }
+
+async function group(id) {
+  GID = id;
+  $('#app').innerHTML = `<div id="top"></div><div id="ledger"></div><div id="hist"></div>
+    <section class="sec">
+    <h2>Ask the secretary</h2>
+    <p class="note">Ask in English, Urdu or Roman Urdu. Answers come only from the ledger.</p>
+    <div class="row" style="margin-top:14px"><input id="q" aria-label="Question" placeholder="Who hasn't paid yet? / Meri bari kab hai?"><button class="btn sm plum" id="ask">Ask</button></div>
+    <div class="row" style="margin-top:14px"><label for="lang">Write in</label><select id="lang" style="width:auto"><option>English</option><option>Urdu</option><option>Roman Urdu</option></select>
+    <button class="btn ghost plum sm" id="rem">Draft reminders</button><button class="btn ghost plum sm" id="sum">Write group update</button></div>
+    <div id="e4"></div><div class="out" id="out" dir="auto"></div></section>`;
+  const show = t => $('#out').textContent = t;
+  $('#ask').onclick = () => guard($('#e4'), async () => { $('#ask').disabled = true; try { show((await api(`/api/groups/${id}/ask`, 'POST', {question: $('#q').value})).answer); } finally { $('#ask').disabled = false; } });
+  $('#q').onkeydown = e => { if (e.key === 'Enter') $('#ask').click(); };
+  $('#sum').onclick = () => guard($('#e4'), async () => show((await api(`/api/groups/${id}/summary`, 'POST', {language: $('#lang').value})).summary));
+  $('#rem').onclick = () => guard($('#e4'), async () => {
+    const r = (await api(`/api/groups/${id}/reminders`, 'POST', {language: $('#lang').value})).reminders;
+    $('#out').innerHTML = r.length ? r.map(x => `<div class="rem"><b>${esc(x.member)}</b><div dir="auto">${esc(x.message)}</div></div>`).join('') : 'Everyone has paid. No reminders needed.';
+  });
+  guard($('#e4'), async () => { STATE = await api(`/api/groups/${id}`); renderAll(STATE); });
+  const p = new URLSearchParams(location.search);
+  if (p.get('paid') === '1') say($('#e4'), 'Payment received. The ledger is updated.', true);
+  timer = setInterval(async () => { try { const s = await api(`/api/groups/${id}`); if (JSON.stringify(s) !== JSON.stringify(STATE)) { STATE = s; renderAll(s); } } catch (e) {} }, 5000);
+}
+
+const gid = new URLSearchParams(location.search).get('g');
+gid ? group(gid) : home();
+</script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+.env
+kameti.db
+__pycache__/
+.venv/
