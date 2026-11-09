@@ -1,6 +1,6 @@
-# Kameti
+# Rota
 
-An AI-run rotating savings committee (kameti, tanda, susu, chit fund) built for the PayPal AI Hackathon.
+An AI-run rotating savings circle (known as kameti, tanda, susu, chama or paluwagan around the world) built for the PayPal AI Hackathon.
 
 Members pay each round through PayPal Checkout. A ledger updates from the PayPal capture (and from webhooks as a backup). When everyone has paid, the pot goes to that round's recipient through PayPal Payouts. Gemini acts as the group's secretary.
 
@@ -35,13 +35,13 @@ Open aistudio.google.com, sign in, click Get API key, then Create API key. Paste
 4. If your sandbox rejects Payouts, set `SIMULATE_PAYOUT=1`. The UI then labels each payout as simulated. Say so in your video.
 
 ## Deploy on Render
-Push to a public GitHub repo, create a Web Service from it (`render.yaml` is included), and set the environment variables. Set `BASE_URL` to your Render URL, for example `https://kameti.onrender.com`. Data lives in SQLite on Render's ephemeral disk, so it resets on redeploy. That is fine for a demo.
+Push to a public GitHub repo, create a Web Service from it (`render.yaml` is included), and set the environment variables. Set `BASE_URL` to your Render URL, for example `https://rota.onrender.com`. Data lives in SQLite on Render's ephemeral disk, so it resets on redeploy. That is fine for a demo.
 
 ## Webhook (optional backup path)
 In the PayPal developer dashboard, open your app > Webhooks > add `https://YOUR-URL/webhooks/paypal` with the event `PAYMENT.CAPTURE.COMPLETED`. Copy the Webhook ID into `PAYPAL_WEBHOOK_ID`. Without it, payments are still recorded when the buyer returns from PayPal.
 
 ## Demo script (under 3 minutes)
-1. State the problem and one real quote or sourced number about kametis.
+1. State the problem and one real quote or sourced number about rotating savings circles.
 2. Create a group by typing one sentence, in Urdu if you like. Confirm the parsed rules.
 3. Pay as each member with the sandbox accounts. Show the ledger updating.
 4. Click "Backdate unpaid dues (demo)" with one member unpaid, then show the default-risk flag, draft reminders, and ask the secretary a question.
