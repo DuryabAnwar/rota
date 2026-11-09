@@ -1,5 +1,6 @@
 # Rota
-
+**Live demo:**https://rota-1-xb6n.onrender.com/
+(Free Render plan: the first load takes about a minute, and data resets when it sleeps.)
 An AI-run rotating savings circle (known as kameti, tanda, susu, chama or paluwagan around the world) built for the PayPal AI Hackathon.
 
 Members pay each round through PayPal Checkout. A ledger updates from the PayPal capture (and from webhooks as a backup). When everyone has paid, the pot goes to that round's recipient through PayPal Payouts. Gemini acts as the group's secretary.
