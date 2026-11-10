@@ -476,3 +476,29 @@ def reminders(gid: int, b: LangIn):
 @app.post("/api/groups/{gid}/summary")
 def summary(gid: int, b: LangIn):
     return {"summary": ask_llm(SUM_SYS.replace("LANGUAGE", b.language), f"DATA:\n{ai_context(gid)}")}
+
+
+# ---------------------------------------------------------------- example circle for first-time visitors
+def seed_demo():
+    """Creates one example circle at startup when the database is empty, so visitors (and judges) don't see a blank app.
+    Render's free plan wipes the database on sleep, so this runs again after every wake-up.
+    Set SEED_DEMO=0 to turn it off. The members are fictional; their emails are placeholders."""
+    if os.getenv("SEED_DEMO", "1") != "1" or qo("SELECT id FROM circles LIMIT 1"):
+        return
+    gid = ex("INSERT INTO circles(name,amount,currency,total_rounds,order_json,seed,rules) VALUES(?,?,?,?,?,?,?)",
+             ("Example circle: Friends Kameti", 30.0, "USD", 3, "[]", "", "Example data. Three friends each pay 30 USD "
+              "a month for 3 months. Each month one member receives the 90 USD pot. The order was decided by a draw."))
+    mids = [ex("INSERT INTO members(group_id,name,email) VALUES(?,?,?)", (gid, n, f"{n.lower()}@example.com"))
+            for n in ("Ali", "Sana", "Zoya")]
+    seed = "demo-seed"  # fixed seed, so the example order is reproducible too
+    order = mids[:]
+    random.Random(seed).shuffle(order)
+    ex("UPDATE circles SET order_json=?, seed=? WHERE id=?", (json.dumps(order), seed, gid))
+    open_round(gid, 1, mids)
+    # Sana has paid; Zoya is 3 days overdue (shows the Overdue badge and the risk rating); Ali is still within time.
+    ex("UPDATE payments SET status='paid', capture_id='EXAMPLE-DATA', paid_at=? WHERE group_id=? AND member_id=?",
+       (iso(now() - timedelta(days=1)), gid, mids[1]))
+    ex("UPDATE payments SET due=? WHERE group_id=? AND member_id=?", (iso(now() - timedelta(days=3)), gid, mids[2]))
+
+
+seed_demo()
