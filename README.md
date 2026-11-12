@@ -6,6 +6,30 @@ An AI-run rotating savings circle (known as kameti, tanda, susu, chama or paluwa
 
 Members pay each round through PayPal Checkout. A ledger updates from the PayPal capture (and from webhooks as a backup). When everyone has paid, the pot goes to that round's recipient through PayPal Payouts. Gemini acts as the group's secretary.
 
+## Try it (for judges)
+Open the live demo above and wait for it to load. There is no sign-in. Everything runs in the PayPal **sandbox**, so no real money moves.
+
+Test accounts (PayPal sandbox personal accounts, one per member):
+
+| Member | Email | Password |
+|---|---|---|
+| Ali | `sb-x47gjj53858767@personal.example.com` | `.$00CGp7` |
+| Zoya | `sb-1xvw553858761@personal.example.com` | `]0/f0gOG` |
+| Sana | `sb-ezotw53858758@personal.example.com` | `xK3R(W$^` |
+
+Walkthrough:
+1. Under "Describe the rules", type a sentence such as: `3 friends, 30 dollars each month, order decided by a draw`.
+2. Under "Members", paste these three lines exactly (name, email):
+   ```
+   Ali, sb-x47gjj53858767@personal.example.com
+   Zoya, sb-1xvw553858761@personal.example.com
+   Sana, sb-ezotw53858758@personal.example.com
+   ```
+3. Click **Read the rules**, check what Gemini understood, then create the circle. The payout order is drawn at random and the seed is shown.
+4. Click **Pay with PayPal** on a member's row. A PayPal sandbox page opens. Log in with one of the accounts above, approve, and you return to the ledger with that member marked Paid. Use a private window, or log out between members. Any of the three accounts can pay any row. The emails matter for the payout, which goes to the recipient whose turn it is.
+5. To see the lateness flow, leave one member unpaid and click **Backdate unpaid dues (demo)**. The ledger shows Overdue and a default-risk rating (hover for the reason). Then try **Draft reminders** and ask the secretary a question, in English, Urdu or Roman Urdu.
+6. Once everyone has paid, click the payout button. The pot goes to that round's recipient and the next round opens.
+
 ## What PayPal does
 - **Orders v2**: each member's contribution is a real sandbox order, approved and captured on PayPal.
 - **Webhooks** (`PAYMENT.CAPTURE.COMPLETED`, signature-verified): backup path that marks a payment paid even if the buyer closes the tab.
@@ -50,7 +74,7 @@ In the PayPal developer dashboard, open your app > Webhooks > add `https://YOUR-
 5. Everyone pays, click payout, show the PayPal batch ID, and the next round opening.
 
 ## Limits
-Sandbox only, no real money. No sign-in (anyone with the link can use the demo). Holding and distributing pooled money for real would need legal and regulatory work this prototype does not do.
+Sandbox only, no real money. No sign-in (anyone with the link can use the demo). The test accounts above are sandbox accounts with no real funds. Holding and distributing pooled money for real would need legal and regulatory work this prototype does not do.
 
 ## License
 MIT. See LICENSE.
